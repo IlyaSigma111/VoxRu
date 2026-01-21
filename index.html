@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>VoxRu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-card">
+    <h1>VoxRu</h1>
+    <p>Твой голос онлайн</p>
+    <input id="usernameInput" placeholder="Введите никнейм">
+    <button id="loginBtn">Войти</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app hidden" id="app">
+  <aside class="sidebar">
+    <h2>VoxRu</h2>
+    <div class="profile">
+      <div class="avatar" id="avatar"></div>
+      <div>
+        <div id="username"></div>
+        <span class="status online">online</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="chat-area">
+    <div class="chat" id="chat"></div>
+    <div class="input">
+      <input id="messageInput" placeholder="Сообщение...">
+      <button id="sendBtn">➤</button>
+    </div>
+  </main>
+</div>
+
+<script type="module" src="script.js"></script>
+</body>
+</html>
