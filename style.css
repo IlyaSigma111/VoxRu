@@ -7,7 +7,7 @@
     --background-primary: #36393f;
     --background-secondary: #2f3136;
     --background-accent: #4f545c;
-    --background-tertiary: #202225; /* добавлено */
+    --background-tertiary: #202225;
     --text-normal: #dcddde;
     --text-muted: #72767d;
 }
@@ -20,7 +20,7 @@ body {
     color: var(--text-normal);
     height:100vh;
     overflow:hidden;
-    display:block; /* убрано центрирование */
+    display:block;
 }
 
 .screen {
@@ -30,6 +30,8 @@ body {
     justify-content:center;
     gap:20px;
     height:100vh;
+    position:relative;
+    z-index:10;
 }
 
 .hidden { display:none; }
