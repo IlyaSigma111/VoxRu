@@ -1,44 +1,72 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>VoxRu</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rucord</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div class="login" id="login">
-  <div class="login-card">
-    <h1>VoxRu</h1>
-    <p>Твой голос онлайн</p>
-    <input id="usernameInput" placeholder="Введите никнейм">
-    <button id="loginBtn">Войти</button>
+<!-- ========== Экран логина ========== -->
+<div id="loginScreen" class="screen-center">
+  <h2>Войдите через Google</h2>
+  <button id="googleLoginBtn" class="btn-primary"><i class="fab fa-google"></i> Войти через Google</button>
+</div>
+
+<!-- ========== Модальное окно для ника ========== -->
+<div id="nicknameModal" class="modal">
+  <div class="modal-content animate-scale">
+    <h3>Выберите ник</h3>
+    <input id="nicknameInput" placeholder="Введите ваш ник" />
+    <button id="nicknameSubmit" class="btn-primary">Сохранить</button>
   </div>
 </div>
 
-<!-- APP -->
-<div class="app hidden" id="app">
-  <aside class="sidebar">
-    <h2>VoxRu</h2>
-    <div class="profile">
-      <div class="avatar" id="avatar"></div>
-      <div>
-        <div id="username"></div>
-        <span class="status online">online</span>
-      </div>
+<!-- ========== Основной интерфейс ========== -->
+<div id="app" class="app-container">
+  <!-- Сайдбар серверов -->
+  <aside class="sidebar" id="sidebar">
+    <div id="userInfo">
+      <div id="userAvatar" class="avatar"></div>
+      <span id="userName"></span>
+    </div>
+
+    <div class="servers-section">
+      <h4>Сервера</h4>
+      <div id="servers"></div>
+      <button class="btn-primary small" onclick="createServer()">Создать сервер</button>
+    </div>
+
+    <div class="channels-section">
+      <h4>Текстовые каналы</h4>
+      <div id="textChannels"></div>
+    </div>
+
+    <div class="channels-section">
+      <h4>Голосовые каналы</h4>
+      <div id="voiceChannels"></div>
+      <button class="btn-primary small" onclick="createVoiceChannel()">Создать голосовой канал</button>
     </div>
   </aside>
 
-  <main class="chat-area">
-    <div class="chat" id="chat"></div>
-    <div class="input">
-      <input id="messageInput" placeholder="Сообщение...">
-      <button id="sendBtn">➤</button>
-    </div>
+  <!-- Основной чат -->
+  <main class="main">
+    <div id="messagesContainer" class="messages"></div>
+    <form id="messageForm" class="message-form">
+      <input id="messageInput" placeholder="Написать сообщение..." />
+      <button type="submit"><i class="fas fa-paper-plane"></i></button>
+    </form>
   </main>
+
+  <!-- Сайдбар участников -->
+  <aside id="membersSidebar" class="members-sidebar">
+    <h4>Онлайн пользователи (<span id="onlineCount">0</span>)</h4>
+    <div id="membersList"></div>
+  </aside>
 </div>
 
-<script type="module" src="script.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
