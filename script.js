@@ -1,92 +1,63 @@
-// ========== CONFIG ==========
+// ВСТАВЬ СВОЙ КОНФИГ ТУТ
 const firebaseConfig = {
     apiKey: "AIzaSyD9aQcvK58mF2byEach9002M8AED8Mit6g",
-    authDomain: "rucord-c222d.firebaseapp.com",
+    databaseURL: "https://rucord-c222d-default-rtdb.firebaseio.com",
     projectId: "rucord-c222d",
-    databaseURL: "https://rucord-c222d-default-rtdb.firebaseio.com", // Убедись, что URL верный
-    storageBucket: "rucord-c222d.appspot.com",
-    messagingSenderId: "21205944885",
     appId: "1:21205944885:web:28ee133fa547c8e21bff7c"
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.database();
 
 // State
 let state = {
-    user: null,
-    nickname: "",
+    userId: localStorage.getItem('rucord_uid') || 'u' + Math.floor(Math.random() * 1000000),
+    nickname: localStorage.getItem('rucord_nick') || '',
+    roleColor: localStorage.getItem('rucord_color') || '#ffffff',
     server: "home",
-    channel: "general",
-    listeners: []
+    channel: "general"
 };
+localStorage.setItem('rucord_uid', state.userId);
 
-// DOM Elements
 const UI = {
-    login: document.getElementById("loginScreen"),
-    nick: document.getElementById("nickScreen"),
+    nickScreen: document.getElementById("nickScreen"),
     app: document.getElementById("app"),
     messages: document.getElementById("messagesContainer"),
-    form: document.getElementById("messageForm"),
-    input: document.getElementById("messageInput")
+    input: document.getElementById("messageInput"),
+    nickInput: document.getElementById("nicknameInput"),
+    form: document.getElementById("messageForm")
 };
 
-// ========== AUTH LOGIC ==========
-auth.onAuthStateChanged(async (user) => {
-    if (user) {
-        state.user = user;
-        const snap = await db.ref(`users/${user.uid}`).once("value");
-        if (snap.exists()) {
-            state.nickname = snap.val().username;
-            showApp();
-        } else {
-            UI.login.classList.add("hidden");
-            UI.nick.classList.remove("hidden");
-        }
-    } else {
-        UI.app.classList.add("hidden");
-        UI.login.classList.remove("hidden");
-    }
-});
+// --- AUTH / ENTRY ---
+if (state.nickname) enterApp();
 
-// Кнопки логина
-document.getElementById("loginBtn").onclick = () => authAction('login');
-document.getElementById("registerBtn").onclick = () => authAction('register');
-
-async function authAction(type) {
-    const email = document.getElementById("emailInput").value;
-    const pass = document.getElementById("passwordInput").value;
-    try {
-        if (type === 'login') await auth.signInWithEmailAndPassword(email, pass);
-        else await auth.createUserWithEmailAndPassword(email, pass);
-    } catch (e) { document.getElementById("loginError").innerText = e.message; }
-}
-
-// Сохранение ника
-document.getElementById("saveNickBtn").onclick = async () => {
-    const nick = document.getElementById("nicknameInput").value.trim();
-    if (!nick) return;
+document.getElementById("saveNickBtn").onclick = () => {
+    const nick = UI.nickInput.value.trim();
+    if (nick.length < 2) return alert("Никнейм слишком короткий!");
     state.nickname = nick;
-    await db.ref(`users/${state.user.uid}`).set({ username: nick, status: 'online' });
-    showApp();
+    localStorage.setItem('rucord_nick', nick);
+    enterApp();
 };
 
-// ========== CORE FUNCTIONS ==========
-function showApp() {
-    UI.nick.classList.add("hidden");
-    UI.login.classList.add("hidden");
+function enterApp() {
+    UI.nickScreen.classList.add("hidden");
     UI.app.classList.remove("hidden");
     document.getElementById("myUsername").innerText = state.nickname;
-    document.getElementById("userAvatar").innerText = state.nickname[0].toUpperCase();
+    updateAvatar();
+
+    // Presence
+    const userRef = db.ref(`users/${state.userId}`);
+    userRef.set({ username: state.nickname, color: state.roleColor, status: "online" });
+    userRef.onDisconnect().remove();
+
     initChat();
+    loadMembers();
+    watchTyping();
 }
 
+// --- CHAT LOGIC ---
 function initChat() {
-    // Очистка слушателей перед входом
     db.ref(`messages/${state.server}/${state.channel}`).off();
-    
-    // Загрузка истории
     db.ref(`messages/${state.server}/${state.channel}`).limitToLast(50).on("child_added", (snap) => {
         renderMessage(snap.val());
     });
@@ -95,14 +66,20 @@ function initChat() {
 function renderMessage(data) {
     const div = document.createElement("div");
     div.className = "message";
+    
+    // Эмодзи парсинг
+    let text = data.text
+        .replace(/:\)/g, '😊').replace(/:\(/g, '☹️')
+        .replace(/<3/g, '❤️').replace(/:fire:/g, '🔥');
+
     div.innerHTML = `
-        <div class="avatar-small" style="background:${stringToColor(data.username)}">${data.username[0].toUpperCase()}</div>
+        <div class="avatar-small" style="background:${stringToColor(data.username)}">${data.username[0]}</div>
         <div class="message-content">
             <div class="message-header">
-                <span class="message-author">${data.username}</span>
+                <span class="message-author" style="color:${data.color || '#fff'}">${data.username}</span>
                 <span style="font-size:10px; color:gray; margin-left:8px;">${new Date(data.timestamp).toLocaleTimeString()}</span>
             </div>
-            <div class="message-text">${data.text}</div>
+            <div class="message-text">${text}</div>
         </div>
     `;
     UI.messages.appendChild(div);
@@ -111,23 +88,83 @@ function renderMessage(data) {
 
 UI.form.onsubmit = (e) => {
     e.preventDefault();
-    const text = UI.input.value.trim();
-    if (!text) return;
+    if (!UI.input.value.trim()) return;
+
     db.ref(`messages/${state.server}/${state.channel}`).push({
-        text,
+        text: UI.input.value,
         username: state.nickname,
-        timestamp: Date.now(),
-        uid: state.user.uid
+        color: state.roleColor,
+        timestamp: Date.now()
     });
     UI.input.value = "";
+    db.ref(`typing/${state.server}/${state.channel}/${state.userId}`).remove();
 };
 
-// Красивый цвет для аватарки
+// --- TYPING ---
+let typeTimeout;
+UI.input.oninput = () => {
+    db.ref(`typing/${state.server}/${state.channel}/${state.userId}`).set(state.nickname);
+    clearTimeout(typeTimeout);
+    typeTimeout = setTimeout(() => {
+        db.ref(`typing/${state.server}/${state.channel}/${state.userId}`).remove();
+    }, 2000);
+};
+
+function watchTyping() {
+    db.ref(`typing/${state.server}/${state.channel}`).on("value", (snap) => {
+        const typers = Object.values(snap.val() || {}).filter(n => n !== state.nickname);
+        document.getElementById("typingIndicator").innerText = typers.length ? `${typers.join(", ")} печатает...` : "";
+    });
+}
+
+// --- SETTINGS ---
+document.getElementById("openSettings").onclick = () => {
+    document.getElementById("editNickname").value = state.nickname;
+    document.getElementById("roleColor").value = state.roleColor;
+    document.getElementById("settingsModal").classList.remove("hidden");
+};
+
+document.getElementById("saveSettingsBtn").onclick = () => {
+    state.nickname = document.getElementById("editNickname").value;
+    state.roleColor = document.getElementById("roleColor").value;
+    localStorage.setItem('rucord_nick', state.nickname);
+    localStorage.setItem('rucord_color', state.roleColor);
+    
+    db.ref(`users/${state.userId}`).update({ 
+        username: state.nickname, 
+        color: state.roleColor 
+    });
+    
+    document.getElementById("settingsModal").classList.add("hidden");
+    location.reload();
+};
+
+document.getElementById("closeSettings").onclick = () => {
+    document.getElementById("settingsModal").classList.add("hidden");
+};
+
+// --- HELPERS ---
+function loadMembers() {
+    db.ref("users").on("value", (snap) => {
+        const list = document.getElementById("memberList");
+        list.innerHTML = "";
+        Object.values(snap.val() || {}).forEach(u => {
+            list.innerHTML += `<div class="member" style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                <div class="avatar-small" style="background:${stringToColor(u.username)}; width:24px; height:24px; font-size:12px">${u.username[0]}</div>
+                <span style="color:${u.color}">${u.username}</span>
+            </div>`;
+        });
+    });
+}
+
+function updateAvatar() {
+    const av = document.getElementById("userAvatar");
+    av.innerText = state.nickname[0].toUpperCase();
+    av.style.background = stringToColor(state.nickname);
+}
+
 function stringToColor(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    return `hsl(${hash % 360}, 60%, 50%)`;
+    return `hsl(${hash % 360}, 65%, 50%)`;
 }
-
-// Выход
-document.getElementById("logoutBtn").onclick = () => auth.signOut();
