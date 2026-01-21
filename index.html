@@ -1,72 +1,78 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rucord</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxChat</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
-
-<!-- ========== Экран логина ========== -->
-<div id="loginScreen" class="screen-center">
-  <h2>Войдите через Google</h2>
-  <button id="googleLoginBtn" class="btn-primary"><i class="fab fa-google"></i> Войти через Google</button>
-</div>
-
-<!-- ========== Модальное окно для ника ========== -->
-<div id="nicknameModal" class="modal">
-  <div class="modal-content animate-scale">
-    <h3>Выберите ник</h3>
-    <input id="nicknameInput" placeholder="Введите ваш ник" />
-    <button id="nicknameSubmit" class="btn-primary">Сохранить</button>
-  </div>
-</div>
-
-<!-- ========== Основной интерфейс ========== -->
-<div id="app" class="app-container">
-  <!-- Сайдбар серверов -->
-  <aside class="sidebar" id="sidebar">
-    <div id="userInfo">
-      <div id="userAvatar" class="avatar"></div>
-      <span id="userName"></span>
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="screen">
+        <h1>Войдите через Google</h1>
+        <button id="googleLoginBtn" class="btn">Войти через Google <i class="fab fa-google"></i></button>
     </div>
 
-    <div class="servers-section">
-      <h4>Сервера</h4>
-      <div id="servers"></div>
-      <button class="btn-primary small" onclick="createServer()">Создать сервер</button>
+    <!-- NICK SCREEN -->
+    <div id="nickScreen" class="screen hidden">
+        <h2>Выберите ник</h2>
+        <input type="text" id="nicknameInput" placeholder="Введите ваш ник">
+        <button id="saveNickBtn" class="btn">Сохранить</button>
     </div>
 
-    <div class="channels-section">
-      <h4>Текстовые каналы</h4>
-      <div id="textChannels"></div>
+    <!-- MAIN APP -->
+    <div id="app" class="hidden">
+        <div class="sidebar">
+            <div class="servers">
+                <h3>Сервера</h3>
+                <button onclick="createServer()" class="btn">Создать сервер</button>
+                <div id="serverList"></div>
+            </div>
+
+            <div class="channels">
+                <h3>Текстовые каналы</h3>
+                <div id="textChannels"></div>
+                <h3>Голосовые каналы</h3>
+                <div id="voiceChannels"></div>
+            </div>
+        </div>
+
+        <div class="chat">
+            <div id="messagesContainer" class="messages"></div>
+            <form id="messageForm" class="message-form">
+                <input type="text" id="messageInput" placeholder="Написать сообщение..." autocomplete="off">
+                <button type="submit"><i class="fas fa-paper-plane"></i></button>
+            </form>
+        </div>
+
+        <div class="members-sidebar" id="membersSidebar">
+            <h3>Онлайн пользователи (<span id="onlineCount">0</span>)</h3>
+            <div id="membersList"></div>
+        </div>
     </div>
 
-    <div class="channels-section">
-      <h4>Голосовые каналы</h4>
-      <div id="voiceChannels"></div>
-      <button class="btn-primary small" onclick="createVoiceChannel()">Создать голосовой канал</button>
+    <!-- VOICE CONTROLS -->
+    <div class="voice-controls hidden" id="voiceControls">
+        <div class="voice-header">
+            <h4>Голосовой канал: <span id="currentVoiceChannel">-</span></h4>
+            <button class="voice-close" onclick="disconnectVoice()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="voice-info">
+            <div id="voiceStatus" class="voice-status">Не подключен</div>
+            <a id="telemostLink" href="#" target="_blank" class="btn btn-telemost">Открыть Telemost</a>
+        </div>
+        <div class="voice-buttons">
+            <button class="voice-btn mic-btn" onclick="toggleMicrophone()"><i class="fas fa-microphone"></i></button>
+            <button class="voice-btn headphone-btn" onclick="toggleHeadphones()"><i class="fas fa-headphones"></i></button>
+            <button class="voice-btn disconnect-btn" onclick="disconnectVoice()"><i class="fas fa-phone-slash"></i></button>
+        </div>
+        <div id="voiceParticipants"></div>
     </div>
-  </aside>
 
-  <!-- Основной чат -->
-  <main class="main">
-    <div id="messagesContainer" class="messages"></div>
-    <form id="messageForm" class="message-form">
-      <input id="messageInput" placeholder="Написать сообщение..." />
-      <button type="submit"><i class="fas fa-paper-plane"></i></button>
-    </form>
-  </main>
-
-  <!-- Сайдбар участников -->
-  <aside id="membersSidebar" class="members-sidebar">
-    <h4>Онлайн пользователи (<span id="onlineCount">0</span>)</h4>
-    <div id="membersList"></div>
-  </aside>
-</div>
-
-<script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
