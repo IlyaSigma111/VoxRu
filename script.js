@@ -1,157 +1,133 @@
-// ========== FIREBASE CONFIG ==========
+// ========== CONFIG ==========
 const firebaseConfig = {
     apiKey: "AIzaSyD9aQcvK58mF2byEach9002M8AED8Mit6g",
     authDomain: "rucord-c222d.firebaseapp.com",
     projectId: "rucord-c222d",
+    databaseURL: "https://rucord-c222d-default-rtdb.firebaseio.com", // Убедись, что URL верный
     storageBucket: "rucord-c222d.appspot.com",
     messagingSenderId: "21205944885",
     appId: "1:21205944885:web:28ee133fa547c8e21bff7c"
 };
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-const database = firebase.database();
+const db = firebase.database();
 
-// ======== GLOBALS ========
-let currentUser = null;
-let nickname = "";
-let currentServer = "home";
-let currentChannel = "general";
-
-// ======== DOM ========
-const loginScreen = document.getElementById("loginScreen");
-const nickScreen = document.getElementById("nickScreen");
-const appScreen = document.getElementById("app");
-const loginBtn = document.getElementById("loginBtn");
-const registerBtn = document.getElementById("registerBtn");
-const saveNickBtn = document.getElementById("saveNickBtn");
-const loginError = document.getElementById("loginError");
-
-// ======== AUTH ========
-loginBtn.onclick = async () => {
-    const email = document.getElementById("emailInput").value.trim();
-    const pass = document.getElementById("passwordInput").value.trim();
-    loginError.textContent = "";
-    try {
-        const res = await auth.signInWithEmailAndPassword(email, pass);
-        currentUser = res.user;
-        nickScreen.classList.remove("hidden");
-        loginScreen.classList.add("hidden");
-    } catch(err){
-        loginError.textContent = err.message;
-    }
+// State
+let state = {
+    user: null,
+    nickname: "",
+    server: "home",
+    channel: "general",
+    listeners: []
 };
 
-registerBtn.onclick = async () => {
-    const email = document.getElementById("emailInput").value.trim();
-    const pass = document.getElementById("passwordInput").value.trim();
-    loginError.textContent = "";
-    try {
-        const res = await auth.createUserWithEmailAndPassword(email, pass);
-        currentUser = res.user;
-        nickScreen.classList.remove("hidden");
-        loginScreen.classList.add("hidden");
-    } catch(err){
-        loginError.textContent = err.message;
-    }
+// DOM Elements
+const UI = {
+    login: document.getElementById("loginScreen"),
+    nick: document.getElementById("nickScreen"),
+    app: document.getElementById("app"),
+    messages: document.getElementById("messagesContainer"),
+    form: document.getElementById("messageForm"),
+    input: document.getElementById("messageInput")
 };
 
-// ======== NICKNAME ========
-saveNickBtn.onclick = async () => {
-    const nickInput = document.getElementById("nicknameInput").value.trim();
-    if(!nickInput) return alert("Введите ник");
-    nickname = nickInput;
-    await database.ref("users/"+currentUser.uid).set({
-        username:nickname,
-        email:currentUser.email,
-        status:"online",
-        createdAt:Date.now()
-    });
-    nickScreen.classList.add("hidden");
-    appScreen.classList.remove("hidden");
-    loadServers();
-    loadChannels();
-    loadMessages();
-    setupRealtimeListeners();
-};
-
-// ======== SERVERS/CHANNELS/MESSAGES =========
-async function loadServers(){
-    const serverList = document.getElementById("serverList");
-    serverList.innerHTML = "";
-    const snapshot = await database.ref("servers").once("value");
-    const servers = snapshot.val() || {};
-    Object.entries(servers).forEach(([id,s])=>{
-        const btn = document.createElement("button");
-        btn.className="btn";
-        btn.textContent=s.name;
-        btn.onclick=()=>switchServer(id);
-        serverList.appendChild(btn);
-    });
-}
-
-function switchServer(id){
-    currentServer=id;
-    loadChannels();
-    loadMessages();
-}
-
-async function loadChannels(){
-    const textChannelsDiv = document.getElementById("textChannels");
-    textChannelsDiv.innerHTML="";
-    const snapshot = await database.ref(`servers/${currentServer}/channels`).once("value");
-    const channels = snapshot.val() || {};
-    Object.entries(channels).forEach(([id,ch])=>{
-        if(ch.type==="text"){
-            const a = document.createElement("a");
-            a.href="#"; a.className="channel"; a.textContent="# "+ch.name;
-            a.onclick=()=>switchChannel(id);
-            textChannelsDiv.appendChild(a);
+// ========== AUTH LOGIC ==========
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        state.user = user;
+        const snap = await db.ref(`users/${user.uid}`).once("value");
+        if (snap.exists()) {
+            state.nickname = snap.val().username;
+            showApp();
+        } else {
+            UI.login.classList.add("hidden");
+            UI.nick.classList.remove("hidden");
         }
-    });
+    } else {
+        UI.app.classList.add("hidden");
+        UI.login.classList.remove("hidden");
+    }
+});
+
+// Кнопки логина
+document.getElementById("loginBtn").onclick = () => authAction('login');
+document.getElementById("registerBtn").onclick = () => authAction('register');
+
+async function authAction(type) {
+    const email = document.getElementById("emailInput").value;
+    const pass = document.getElementById("passwordInput").value;
+    try {
+        if (type === 'login') await auth.signInWithEmailAndPassword(email, pass);
+        else await auth.createUserWithEmailAndPassword(email, pass);
+    } catch (e) { document.getElementById("loginError").innerText = e.message; }
 }
 
-function switchChannel(id){
-    currentChannel=id;
-    loadMessages();
-}
-
-async function loadMessages(){
-    const container = document.getElementById("messagesContainer");
-    container.innerHTML="";
-    const snapshot = await database.ref(`messages/${currentServer}/${currentChannel}`).limitToLast(50).once("value");
-    snapshot.forEach(child=>{
-        const msg = child.val();
-        const div = document.createElement("div");
-        div.className="message";
-        const avatar = document.createElement("div");
-        avatar.className="message-avatar";
-        avatar.textContent = msg.username.charAt(0).toUpperCase();
-        const content = document.createElement("div");
-        content.className="message-content";
-        content.innerHTML = `<div class="message-header"><span class="message-author">${msg.username}</span></div><div class="message-text">${msg.text}</div>`;
-        div.appendChild(avatar);
-        div.appendChild(content);
-        container.appendChild(div);
-        div.scrollIntoView({behavior:"smooth"});
-    });
-}
-
-// ======== SEND MESSAGE ========
-document.getElementById("messageForm").onsubmit = async (e)=>{
-    e.preventDefault();
-    const input = document.getElementById("messageInput");
-    const text = input.value.trim();
-    if(!text) return;
-    await database.ref(`messages/${currentServer}/${currentChannel}`).push({
-        text:text,
-        userId:currentUser.uid,
-        username:nickname,
-        timestamp:Date.now()
-    });
-    input.value="";
+// Сохранение ника
+document.getElementById("saveNickBtn").onclick = async () => {
+    const nick = document.getElementById("nicknameInput").value.trim();
+    if (!nick) return;
+    state.nickname = nick;
+    await db.ref(`users/${state.user.uid}`).set({ username: nick, status: 'online' });
+    showApp();
 };
 
-// ======== REALTIME LISTENERS ========
-function setupRealtimeListeners(){
-    database.ref(`messages/${currentServer}/${currentChannel}`).limitToLast(1).on("child_added", loadMessages);
+// ========== CORE FUNCTIONS ==========
+function showApp() {
+    UI.nick.classList.add("hidden");
+    UI.login.classList.add("hidden");
+    UI.app.classList.remove("hidden");
+    document.getElementById("myUsername").innerText = state.nickname;
+    document.getElementById("userAvatar").innerText = state.nickname[0].toUpperCase();
+    initChat();
 }
+
+function initChat() {
+    // Очистка слушателей перед входом
+    db.ref(`messages/${state.server}/${state.channel}`).off();
+    
+    // Загрузка истории
+    db.ref(`messages/${state.server}/${state.channel}`).limitToLast(50).on("child_added", (snap) => {
+        renderMessage(snap.val());
+    });
+}
+
+function renderMessage(data) {
+    const div = document.createElement("div");
+    div.className = "message";
+    div.innerHTML = `
+        <div class="avatar-small" style="background:${stringToColor(data.username)}">${data.username[0].toUpperCase()}</div>
+        <div class="message-content">
+            <div class="message-header">
+                <span class="message-author">${data.username}</span>
+                <span style="font-size:10px; color:gray; margin-left:8px;">${new Date(data.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div class="message-text">${data.text}</div>
+        </div>
+    `;
+    UI.messages.appendChild(div);
+    UI.messages.scrollTop = UI.messages.scrollHeight;
+}
+
+UI.form.onsubmit = (e) => {
+    e.preventDefault();
+    const text = UI.input.value.trim();
+    if (!text) return;
+    db.ref(`messages/${state.server}/${state.channel}`).push({
+        text,
+        username: state.nickname,
+        timestamp: Date.now(),
+        uid: state.user.uid
+    });
+    UI.input.value = "";
+};
+
+// Красивый цвет для аватарки
+function stringToColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    return `hsl(${hash % 360}, 60%, 50%)`;
+}
+
+// Выход
+document.getElementById("logoutBtn").onclick = () => auth.signOut();
