@@ -20,7 +20,7 @@ try {
     firebase.initializeApp(firebaseConfig);
 } catch (error) {
     console.error("Ошибка инициализации Firebase:", error);
-    alert("Ошибка подключения к базе данных. Пожалуйста, проверьте конфигурацию Firebase.");
+    showErrorMessage("Ошибка подключения к базе данных. Пожалуйста, проверьте конфигурацию Firebase.");
 }
 
 const database = firebase.database();
@@ -44,7 +44,8 @@ const state = {
     usersRef: null,
     typingRef: null,
     presenceRef: null,
-    userRef: null
+    userRef: null,
+    isMobile: false
 };
 
 const emojiMap = {
@@ -83,6 +84,90 @@ const emojiMap = {
 };
 
 // ============================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================
+
+function showErrorMessage(message) {
+    alert(message);
+    console.error(message);
+}
+
+function detectMobile() {
+    state.isMobile = window.innerWidth <= 768;
+    return state.isMobile;
+}
+
+function updateMobileLayout() {
+    const isMobile = detectMobile();
+    
+    // Добавляем/удаляем мобильные элементы
+    if (isMobile && !document.querySelector('.mobile-menu-toggle')) {
+        addMobileElements();
+    }
+    
+    // Обновляем отображение
+    if (isMobile) {
+        document.body.classList.add('mobile');
+    } else {
+        document.body.classList.remove('mobile');
+        document.querySelector('.channels-sidebar')?.classList.remove('active');
+    }
+}
+
+function addMobileElements() {
+    // Добавляем кнопку меню
+    const channelInfo = document.querySelector('.channel-info');
+    if (channelInfo && !document.querySelector('.mobile-menu-toggle')) {
+        const menuToggle = document.createElement('button');
+        menuToggle.className = 'mobile-menu-toggle';
+        menuToggle.innerHTML = '<i class="fas fa-bars"></i>';
+        menuToggle.title = 'Показать меню';
+        menuToggle.addEventListener('click', toggleChannelsSidebar);
+        channelInfo.parentNode.insertBefore(menuToggle, channelInfo);
+    }
+    
+    // Добавляем кнопку пользователя
+    const channelTools = document.querySelector('.channel-tools');
+    if (channelTools && !document.querySelector('.mobile-user-toggle')) {
+        const userToggle = document.createElement('button');
+        userToggle.className = 'mobile-user-toggle';
+        userToggle.innerHTML = '<i class="fas fa-user"></i>';
+        userToggle.title = 'Показать профиль';
+        userToggle.addEventListener('click', showSettings);
+        channelTools.appendChild(userToggle);
+    }
+}
+
+function toggleChannelsSidebar() {
+    const sidebar = document.querySelector('.channels-sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('active');
+        
+        // Добавляем затемнение фона
+        if (sidebar.classList.contains('active')) {
+            const overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            overlay.addEventListener('click', toggleChannelsSidebar);
+            document.querySelector('#chat-screen').appendChild(overlay);
+            
+            // Стили для overlay
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 99;
+            `;
+        } else {
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (overlay) overlay.remove();
+        }
+    }
+}
+
+// ============================================
 // ИНИЦИАЛИЗАЦИЯ И ВХОД
 // ============================================
 
@@ -106,7 +191,23 @@ function checkSavedUser() {
 function showLoginScreen() {
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('chat-screen').classList.add('hidden');
-    document.getElementById('username').focus();
+    
+    // Фокус на поле ввода
+    setTimeout(() => {
+        const usernameInput = document.getElementById('username');
+        if (usernameInput) {
+            usernameInput.focus();
+            
+            // Для мобильных устройств предотвращаем zoom
+            if (state.isMobile) {
+                usernameInput.addEventListener('focus', function() {
+                    setTimeout(() => {
+                        this.style.fontSize = '16px';
+                    }, 100);
+                });
+            }
+        }
+    }, 100);
 }
 
 function enterChat() {
@@ -123,6 +224,9 @@ function enterChat() {
     
     // Обновляем отображение
     updateUserDisplay();
+    
+    // Обновляем мобильный лейаут
+    updateMobileLayout();
     
     // Инициализируем Firebase
     initializeFirebaseConnections();
@@ -158,11 +262,10 @@ function initializeFirebaseConnections() {
         
     } catch (error) {
         console.error("Ошибка инициализации Firebase:", error);
-        alert("Ошибка подключения к серверу чата. Пожалуйста, обновите страницу.");
+        showErrorMessage("Ошибка подключения к серверу чата. Пожалуйста, обновите страницу.");
     }
 }
 
-// Сохраняем пользователя в Firebase
 function saveUserToFirebase() {
     const userData = {
         id: state.user.id,
@@ -172,7 +275,6 @@ function saveUserToFirebase() {
         online: true
     };
     
-    // Сохраняем в users
     state.userRef.set(userData)
         .then(() => {
             console.log("Пользователь сохранен в Firebase");
@@ -182,9 +284,7 @@ function saveUserToFirebase() {
         });
 }
 
-// Настраиваем присутствие пользователя
 function setupUserPresence() {
-    // Обновляем статус онлайн
     const presenceData = {
         id: state.user.id,
         username: state.user.username,
@@ -195,17 +295,14 @@ function setupUserPresence() {
     
     state.presenceRef.set(presenceData);
     
-    // При отключении - удаляем из presence, но сохраняем в users с offline статусом
     state.presenceRef.onDisconnect().remove();
     
-    // Обновляем статус в users при отключении
     state.userRef.onDisconnect().update({
         online: false,
         lastSeen: firebase.database.ServerValue.TIMESTAMP
     });
 }
 
-// Настраиваем слушатель печати
 function setupTypingListener() {
     state.typingRef.on('value', (snapshot) => {
         const typingData = snapshot.val() || {};
@@ -214,7 +311,6 @@ function setupTypingListener() {
     });
 }
 
-// Настраиваем слушатель онлайн пользователей
 function setupOnlineUsersListener() {
     state.usersRef.on('value', (snapshot) => {
         const usersData = snapshot.val() || {};
@@ -310,10 +406,15 @@ function sendMessage() {
         .then(() => {
             input.value = '';
             state.typingRef.child(state.user.id).remove();
+            
+            // Фокус обратно на поле ввода
+            setTimeout(() => {
+                input.focus();
+            }, 50);
         })
         .catch(error => {
             console.error("Ошибка отправки сообщения:", error);
-            alert("Не удалось отправить сообщение. Попробуйте еще раз.");
+            showErrorMessage("Не удалось отправить сообщение. Попробуйте еще раз.");
         });
 }
 
@@ -377,6 +478,8 @@ function updateOnlineUsersDisplay() {
     const onlineCount = document.getElementById('online-count');
     const onlineCountDetail = document.getElementById('online-count-detail');
     const offlineCount = document.getElementById('offline-count');
+    
+    if (!onlineList) return;
     
     onlineList.innerHTML = '';
     offlineList.innerHTML = '';
@@ -447,12 +550,12 @@ function updateUsername() {
     const newUsername = document.getElementById('new-username').value.trim();
     
     if (!newUsername) {
-        alert('Введите новый никнейм');
+        showErrorMessage('Введите новый никнейм');
         return;
     }
     
     if (newUsername.length < 2 || newUsername.length > 32) {
-        alert('Никнейм должен быть от 2 до 32 символов');
+        showErrorMessage('Никнейм должен быть от 2 до 32 символов');
         return;
     }
     
@@ -476,7 +579,7 @@ function updateUsername() {
     }
     
     updateUserDisplay();
-    alert('Никнейм успешно обновлен!');
+    showErrorMessage('Никнейм успешно обновлен!');
 }
 
 function changeColor(color) {
@@ -513,11 +616,13 @@ function changeColor(color) {
 
 function updateUserDisplay() {
     document.getElementById('current-username').textContent = state.user.username;
-    document.getElementById('user-id').textContent = '#' + state.user.id.substr(-4);
+    document.getElementById('user-id').textContent = '#' + (state.user.id ? state.user.id.substr(-4) : '0000');
     document.getElementById('user-avatar-text').textContent = state.user.username.charAt(0).toUpperCase();
     
     const avatar = document.querySelector('.user-avatar');
-    avatar.style.background = `linear-gradient(135deg, ${state.user.color}, ${adjustColor(state.user.color, -20)})`;
+    if (avatar) {
+        avatar.style.background = `linear-gradient(135deg, ${state.user.color}, ${adjustColor(state.user.color, -20)})`;
+    }
 }
 
 function clearStorage() {
@@ -532,6 +637,10 @@ function clearStorage() {
                 online: false,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
             });
+        }
+        
+        if (state.typingRef && state.user.id) {
+            state.typingRef.child(state.user.id).remove();
         }
         
         // Очищаем localStorage
@@ -578,7 +687,9 @@ function escapeHtml(text) {
 
 function scrollToBottom() {
     const container = document.getElementById('messages-container');
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
 // ============================================
@@ -587,37 +698,85 @@ function scrollToBottom() {
 
 function initEventListeners() {
     // Вход в чат
-    document.getElementById('enter-chat').addEventListener('click', () => {
-        const username = document.getElementById('username').value.trim();
+    const enterChatBtn = document.getElementById('enter-chat');
+    const usernameInput = document.getElementById('username');
+    
+    if (enterChatBtn) {
+        enterChatBtn.addEventListener('click', handleLogin);
+        // Улучшаем доступность для касаний
+        enterChatBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            this.classList.add('active');
+        });
+        
+        enterChatBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            this.classList.remove('active');
+            handleLogin();
+        });
+    }
+    
+    if (usernameInput) {
+        usernameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+        
+        // Предотвращаем zoom на iOS
+        usernameInput.addEventListener('focus', function() {
+            if (state.isMobile) {
+                setTimeout(() => {
+                    this.style.fontSize = '16px';
+                }, 100);
+            }
+        });
+    }
+    
+    function handleLogin() {
+        const username = usernameInput.value.trim();
         if (!username) {
-            alert('Введите никнейм');
+            showErrorMessage('Введите никнейм');
+            usernameInput.focus();
             return;
         }
         
         state.user.username = username;
         enterChat();
-    });
-    
-    document.getElementById('username').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            document.getElementById('enter-chat').click();
-        }
-    });
+    }
     
     // Отправка сообщения
-    document.getElementById('send-message').addEventListener('click', sendMessage);
+    const sendMessageBtn = document.getElementById('send-message');
+    const messageInput = document.getElementById('message-input');
     
-    document.getElementById('message-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    if (sendMessageBtn) {
+        sendMessageBtn.addEventListener('click', sendMessage);
+    }
     
-    // Индикатор печати
-    document.getElementById('message-input').addEventListener('input', () => {
-        startTyping();
-    });
+    if (messageInput) {
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Индикатор печати
+        messageInput.addEventListener('input', () => {
+            if (messageInput.value.trim()) {
+                startTyping();
+            }
+        });
+        
+        // Предотвращаем zoom на iOS
+        messageInput.addEventListener('focus', function() {
+            if (state.isMobile) {
+                setTimeout(() => {
+                    this.style.fontSize = '16px';
+                }, 100);
+            }
+        });
+    }
     
     // Переключение каналов
     document.querySelectorAll('.channel').forEach(channel => {
@@ -632,6 +791,11 @@ function initEventListeners() {
                 state.currentChannel = channelName;
                 document.getElementById('current-channel').textContent = channelName;
                 document.getElementById('message-input').placeholder = `Написать сообщение в #${channelName}`;
+                
+                // Закрываем сайдбар на мобильных
+                if (state.isMobile) {
+                    toggleChannelsSidebar();
+                }
                 
                 // Отписываемся от старых слушателей
                 if (state.messagesRef) {
@@ -660,7 +824,6 @@ function initEventListeners() {
         server.addEventListener('click', (e) => {
             const serverName = server.dataset.server;
             if (serverName === 'main') {
-                // Главный сервер - ничего не меняем
                 return;
             }
             
@@ -670,28 +833,28 @@ function initEventListeners() {
             }
             
             // Здесь можно добавить логику для переключения серверов
-            alert(`Сервер "${serverName}" в разработке. Оставайтесь на основном сервере.`);
+            showErrorMessage(`Сервер "${serverName}" в разработке. Оставайтесь на основном сервере.`);
         });
     });
     
     // Настройки
-    document.getElementById('settings-btn').addEventListener('click', showSettings);
+    document.getElementById('settings-btn')?.addEventListener('click', showSettings);
     
-    document.querySelector('.close-modal').addEventListener('click', () => {
+    document.querySelector('.close-modal')?.addEventListener('click', () => {
         document.getElementById('settings-modal').classList.add('hidden');
     });
     
-    document.querySelector('.close-settings').addEventListener('click', () => {
+    document.querySelector('.close-settings')?.addEventListener('click', () => {
         document.getElementById('settings-modal').classList.add('hidden');
     });
     
-    document.getElementById('settings-modal').addEventListener('click', (e) => {
+    document.getElementById('settings-modal')?.addEventListener('click', (e) => {
         if (e.target === document.getElementById('settings-modal')) {
             document.getElementById('settings-modal').classList.add('hidden');
         }
     });
     
-    document.getElementById('update-username').addEventListener('click', updateUsername);
+    document.getElementById('update-username')?.addEventListener('click', updateUsername);
     
     document.querySelectorAll('.color-option').forEach(option => {
         option.addEventListener('click', () => {
@@ -699,11 +862,15 @@ function initEventListeners() {
         });
     });
     
-    document.getElementById('clear-storage').addEventListener('click', clearStorage);
+    document.getElementById('clear-storage')?.addEventListener('click', clearStorage);
     
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             document.getElementById('settings-modal').classList.add('hidden');
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (overlay) {
+                toggleChannelsSidebar();
+            }
         }
     });
     
@@ -734,15 +901,9 @@ function initEventListeners() {
             console.log('Отключено от Firebase');
         }
     });
-}
-
-// ============================================
-// ЗАПУСК ПРИЛОЖЕНИЯ
-// ============================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    initEventListeners();
-    checkSavedUser();
+    
+    // Обработка изменения размера окна
+    window.addEventListener('resize', updateMobileLayout);
     
     // Обработка закрытия вкладки
     window.addEventListener('beforeunload', () => {
@@ -761,4 +922,62 @@ document.addEventListener('DOMContentLoaded', () => {
             state.typingRef.child(state.user.id).remove();
         }
     });
+}
+
+// ============================================
+// ЗАПУСК ПРИЛОЖЕНИЯ
+// ============================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Определяем мобильное устройство
+    detectMobile();
+    updateMobileLayout();
+    
+    // Инициализируем обработчики событий
+    initEventListeners();
+    
+    // Проверяем сохраненного пользователя
+    checkSavedUser();
+    
+    // Добавляем стили для overlay
+    const style = document.createElement('style');
+    style.textContent = `
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Улучшения для касаний на мобильных */
+        @media (hover: none) and (pointer: coarse) {
+            .btn {
+                min-height: 48px;
+            }
+            
+            input, textarea {
+                min-height: 48px;
+                font-size: 16px;
+            }
+            
+            .channel, .member, .server {
+                min-height: 44px;
+            }
+            
+            .mobile-menu-toggle, .mobile-user-toggle {
+                min-width: 44px;
+                min-height: 44px;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 });
