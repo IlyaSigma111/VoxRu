@@ -11,10 +11,16 @@
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <!-- LOGIN SCREEN -->
+    <!-- LOGIN/REGISTER SCREEN -->
     <div id="loginScreen" class="screen">
-        <h1>Войдите через Google</h1>
-        <button id="googleLoginBtn" class="btn">Войти через Google <i class="fab fa-google"></i></button>
+        <h1>Вход / Регистрация</h1>
+        <input type="email" id="emailInput" placeholder="Email">
+        <input type="password" id="passwordInput" placeholder="Пароль">
+        <div class="login-buttons">
+            <button id="loginBtn" class="btn">Войти</button>
+            <button id="registerBtn" class="btn">Зарегистрироваться</button>
+        </div>
+        <div id="loginError" class="error-message"></div>
     </div>
 
     <!-- NICK SCREEN -->
@@ -53,24 +59,6 @@
             <h3>Онлайн пользователи (<span id="onlineCount">0</span>)</h3>
             <div id="membersList"></div>
         </div>
-    </div>
-
-    <!-- VOICE CONTROLS -->
-    <div class="voice-controls hidden" id="voiceControls">
-        <div class="voice-header">
-            <h4>Голосовой канал: <span id="currentVoiceChannel">-</span></h4>
-            <button class="voice-close" onclick="disconnectVoice()"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="voice-info">
-            <div id="voiceStatus" class="voice-status">Не подключен</div>
-            <a id="telemostLink" href="#" target="_blank" class="btn btn-telemost">Открыть Telemost</a>
-        </div>
-        <div class="voice-buttons">
-            <button class="voice-btn mic-btn" onclick="toggleMicrophone()"><i class="fas fa-microphone"></i></button>
-            <button class="voice-btn headphone-btn" onclick="toggleHeadphones()"><i class="fas fa-headphones"></i></button>
-            <button class="voice-btn disconnect-btn" onclick="disconnectVoice()"><i class="fas fa-phone-slash"></i></button>
-        </div>
-        <div id="voiceParticipants"></div>
     </div>
 
     <script src="app.js"></script>
