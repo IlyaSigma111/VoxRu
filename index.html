@@ -3,62 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoxChat</title>
+    <title>RUCORD | Premium Chat</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- LOGIN/REGISTER SCREEN -->
-    <div id="loginScreen" class="screen">
-        <h1>Вход / Регистрация</h1>
-        <input type="email" id="emailInput" placeholder="Email">
-        <input type="password" id="passwordInput" placeholder="Пароль">
-        <div class="login-buttons">
-            <button id="loginBtn" class="btn">Войти</button>
-            <button id="registerBtn" class="btn">Зарегистрироваться</button>
+
+    <div class="app-overlay"></div>
+
+    <div class="screen" id="loginScreen">
+        <div class="auth-card">
+            <h2>С возвращением!</h2>
+            <p class="subtitle">Мы так рады видеть вас снова!</p>
+            <div class="input-group">
+                <label>EMAIL</label>
+                <input type="email" id="emailInput" required>
+            </div>
+            <div class="input-group">
+                <label>ПАРОЛЬ</label>
+                <input type="password" id="passwordInput" required>
+            </div>
+            <p id="loginError" class="error-message"></p>
+            <button class="btn main-btn" id="loginBtn">Вход</button>
+            <button class="btn secondary-btn" id="registerBtn">Зарегистрироваться</button>
         </div>
-        <div id="loginError" class="error-message"></div>
     </div>
 
-    <!-- NICK SCREEN -->
-    <div id="nickScreen" class="screen hidden">
-        <h2>Выберите ник</h2>
-        <input type="text" id="nicknameInput" placeholder="Введите ваш ник">
-        <button id="saveNickBtn" class="btn">Сохранить</button>
+    <div class="screen hidden" id="nickScreen">
+        <div class="auth-card">
+            <h2>Как вас зовут?</h2>
+            <div class="input-group">
+                <input type="text" id="nicknameInput" placeholder="Ваш никнейм...">
+            </div>
+            <button class="btn main-btn" id="saveNickBtn">Начать общение</button>
+        </div>
     </div>
 
-    <!-- MAIN APP -->
     <div id="app" class="hidden">
-        <div class="sidebar">
-            <div class="servers">
-                <h3>Сервера</h3>
-                <button onclick="createServer()" class="btn">Создать сервер</button>
-                <div id="serverList"></div>
-            </div>
+        <nav class="server-rail">
+            <div class="server-icon home-icon active"><i class="fa-brands fa-discord"></i></div>
+            <div class="separator"></div>
+            <div id="serverList">
+                </div>
+            <div class="server-icon add-server"><i class="fa-solid fa-plus"></i></div>
+        </nav>
 
-            <div class="channels">
-                <h3>Текстовые каналы</h3>
-                <div id="textChannels"></div>
-                <h3>Голосовые каналы</h3>
-                <div id="voiceChannels"></div>
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <h3 id="currentServerName">Загрузка...</h3>
+            </header>
+            <div class="sidebar-scroll">
+                <div class="channels-section">
+                    <h4><i class="fa-solid fa-chevron-down"></i> ТЕКСТОВЫЕ КАНАЛЫ</h4>
+                    <div id="textChannels" class="channel-list"></div>
+                </div>
             </div>
-        </div>
+            <footer class="user-panel">
+                <div class="user-info">
+                    <div class="avatar-small" id="userAvatar">?</div>
+                    <div>
+                        <div class="user-name" id="myUsername">User</div>
+                        <div class="user-id">#online</div>
+                    </div>
+                </div>
+                <div class="user-controls">
+                    <i class="fa-solid fa-microphone"></i>
+                    <i class="fa-solid fa-headphones"></i>
+                    <i class="fa-solid fa-gear" id="logoutBtn"></i>
+                </div>
+            </footer>
+        </aside>
 
-        <div class="chat">
-            <div id="messagesContainer" class="messages"></div>
-            <form id="messageForm" class="message-form">
-                <input type="text" id="messageInput" placeholder="Написать сообщение..." autocomplete="off">
-                <button type="submit"><i class="fas fa-paper-plane"></i></button>
+        <main class="chat-area">
+            <header class="chat-header">
+                <span class="hashtag">#</span>
+                <h3 id="channelNameDisplay">general</h3>
+            </header>
+            <div class="messages" id="messagesContainer">
+                </div>
+            <form class="message-form" id="messageForm">
+                <div class="input-wrapper">
+                    <button type="button" class="attach-btn"><i class="fa-solid fa-circle-plus"></i></button>
+                    <input type="text" id="messageInput" placeholder="Написать в #general">
+                    <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
             </form>
-        </div>
+        </main>
 
-        <div class="members-sidebar" id="membersSidebar">
-            <h3>Онлайн пользователи (<span id="onlineCount">0</span>)</h3>
-            <div id="membersList"></div>
-        </div>
+        <aside class="members-sidebar">
+            <h4>В СЕТИ — <span id="memberCount">0</span></h4>
+            <div id="memberList"></div>
+        </aside>
     </div>
 
     <script src="app.js"></script>
