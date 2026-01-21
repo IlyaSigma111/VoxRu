@@ -2,8 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUCORD | Ultimate Chat</title>
+    <title>RUCORD | Premium Edition</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -14,12 +13,19 @@
     <div class="screen" id="nickScreen">
         <div class="auth-card">
             <div class="brand-logo"><i class="fa-brands fa-discord"></i></div>
-            <h2>Добро пожаловать</h2>
-            <p class="subtitle">Введите ваш никнейм для входа в Rucord</p>
+            <h2>С возвращением!</h2>
+            <p class="subtitle">Мы так рады вас видеть!</p>
+            
             <div class="input-group">
-                <input type="text" id="nicknameInput" placeholder="Никнейм..." maxlength="15">
+                <label>КАК ВАС ЗОВУТ?</label>
+                <input type="text" id="nicknameInput" placeholder="Введите ваш ник..." maxlength="15">
             </div>
-            <button class="btn main-btn" id="saveNickBtn">Войти в систему</button>
+            
+            <button class="btn main-btn large" id="saveNickBtn">
+                <span>Продолжить</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <p class="terms">При входе вы соглашаетесь с правилами сообщества Rucord.</p>
         </div>
     </div>
 
@@ -36,17 +42,7 @@
             <div class="sidebar-scroll">
                 <div class="channels-section">
                     <h4>ТЕКСТОВЫЕ КАНАЛЫ</h4>
-                    <div class="channel-item active"># общий</div>
-                    <div class="channel-item"># разработка</div>
-                </div>
-            </div>
-            
-            <div id="voicePanel" class="voice-panel">
-                <div class="voice-info"><i class="fa-solid fa-signal-stream"></i> Готов к звонку</div>
-                <div class="voice-actions">
-                    <button id="muteBtn"><i class="fa-solid fa-microphone"></i></button>
-                    <button id="deafenBtn"><i class="fa-solid fa-headphones"></i></button>
-                    <button class="hangup"><i class="fa-solid fa-phone-slash"></i></button>
+                    <div class="channel-item active"><i class="fa-solid fa-hashtag"></i> общий</div>
                 </div>
             </div>
 
@@ -55,10 +51,11 @@
                     <div class="avatar-small" id="userAvatar">?</div>
                     <div class="user-name-wrapper">
                         <div class="user-name" id="myUsername">User</div>
-                        <div class="user-status">В сети</div>
+                        <div class="user-status"><span class="dot online"></span> В сети</div>
                     </div>
                 </div>
                 <div class="user-controls">
+                    <i class="fa-solid fa-microphone"></i>
                     <i class="fa-solid fa-gear" id="openSettings"></i>
                 </div>
             </footer>
@@ -66,30 +63,25 @@
 
         <main class="chat-area">
             <header class="chat-header">
-                <span class="hashtag">#</span> <h3>общий</h3>
+                <i class="fa-solid fa-hashtag"></i> <h3>общий</h3>
             </header>
             <div class="messages" id="messagesContainer"></div>
             <div id="typingIndicator" class="typing-indicator"></div>
             <form class="message-form" id="messageForm">
                 <div class="input-wrapper">
-                    <button type="button" class="emoji-btn">😊</button>
-                    <input type="text" id="messageInput" placeholder="Написать сообщение (используйте :) или <3)">
+                    <button type="button" class="emoji-btn"><i class="fa-regular fa-face-smile"></i></button>
+                    <input type="text" id="messageInput" placeholder="Написать в #общий">
                     <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
                 </div>
             </form>
         </main>
-
-        <aside class="members-sidebar">
-            <h4>В СЕТИ</h4>
-            <div id="memberList"></div>
-        </aside>
     </div>
 
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content settings-grid">
             <div class="settings-sidebar">
-                <div class="s-item active">Профиль</div>
-                <div class="s-item" onclick="location.reload()">Выйти</div>
+                <div class="s-item active"><i class="fa-solid fa-user"></i> Профиль</div>
+                <div class="s-item danger" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> Выход</div>
             </div>
             <div class="settings-main">
                 <h3>Настройки профиля</h3>
@@ -99,10 +91,10 @@
                 </div>
                 <div class="input-group">
                     <label>ЦВЕТ НИКА</label>
-                    <input type="color" id="roleColor">
+                    <input type="color" id="roleColor" class="color-picker">
                 </div>
                 <div class="modal-actions">
-                    <button class="btn" id="closeSettings">Закрыть</button>
+                    <button class="btn ghost" id="closeSettings">Отмена</button>
                     <button class="btn main-btn" id="saveSettingsBtn">Сохранить</button>
                 </div>
             </div>
