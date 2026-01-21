@@ -2,105 +2,271 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>RUCORD | Premium Edition</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUCORD - Discord-like Chat</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
 </head>
 <body>
-
-    <div class="screen" id="nickScreen">
-        <div class="auth-card">
-            <div class="brand-logo"><i class="fa-brands fa-discord"></i></div>
-            <h2>С возвращением!</h2>
-            <p class="subtitle">Мы так рады вас видеть!</p>
-            
-            <div class="input-group">
-                <label>КАК ВАС ЗОВУТ?</label>
-                <input type="text" id="nicknameInput" placeholder="Введите ваш ник..." maxlength="15">
+    <!-- Экран входа -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-comments"></i>
+                <h1>RUCORD</h1>
+                <p>Discord-стиль чат в реальном времени</p>
             </div>
-            
-            <button class="btn main-btn large" id="saveNickBtn">
-                <span>Продолжить</span>
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
-            <p class="terms">При входе вы соглашаетесь с правилами сообщества Rucord.</p>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="username">Введите ваш никнейм</label>
+                    <input type="text" id="username" placeholder="Например: CoolUser123" maxlength="32" autocomplete="off">
+                    <p class="form-hint">Вы сможете изменить его позже в настройках</p>
+                </div>
+                <button id="enter-chat" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Войти в чат
+                </button>
+            </div>
+            <div class="login-footer">
+                <p><i class="fas fa-info-circle"></i> Ваш никнейм сохранится в этом браузере</p>
+            </div>
         </div>
     </div>
 
-    <div id="app" class="hidden">
-        <nav class="server-rail">
-            <div class="server-icon active"><i class="fa-solid fa-house"></i></div>
-            <div class="separator"></div>
-            <div id="serverList"></div>
-            <div class="server-icon add-btn"><i class="fa-solid fa-plus"></i></div>
-        </nav>
-
-        <aside class="sidebar">
-            <header class="sidebar-header"><h3>RUCORD ALPHA</h3></header>
-            <div class="sidebar-scroll">
-                <div class="channels-section">
-                    <h4>ТЕКСТОВЫЕ КАНАЛЫ</h4>
-                    <div class="channel-item active"><i class="fa-solid fa-hashtag"></i> общий</div>
+    <!-- Основной интерфейс чата (скрыт по умолчанию) -->
+    <div id="chat-screen" class="screen hidden">
+        <!-- Панель серверов -->
+        <div class="servers-panel">
+            <div class="server active" data-server="main">
+                <div class="server-icon">
+                    <i class="fas fa-home"></i>
                 </div>
             </div>
+            <div class="server" data-server="general">
+                <div class="server-icon">
+                    <i class="fas fa-hashtag"></i>
+                </div>
+            </div>
+            <div class="server" data-server="gaming">
+                <div class="server-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+            </div>
+            <div class="server" data-server="music">
+                <div class="server-icon">
+                    <i class="fas fa-music"></i>
+                </div>
+            </div>
+            <div class="server-divider"></div>
+            <div class="server" id="settings-btn" title="Настройки">
+                <div class="server-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </div>
+        </div>
 
-            <footer class="user-panel">
-                <div class="user-info">
-                    <div class="avatar-small" id="userAvatar">?</div>
-                    <div class="user-name-wrapper">
-                        <div class="user-name" id="myUsername">User</div>
-                        <div class="user-status"><span class="dot online"></span> В сети</div>
+        <!-- Сайдбар каналов -->
+        <div class="channels-sidebar">
+            <div class="server-header">
+                <h3>RUCORD</h3>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            
+            <div class="channels-list">
+                <div class="category">
+                    <div class="category-header">
+                        <span>ТЕКСТОВЫЕ КАНАЛЫ</span>
+                        <i class="fas fa-plus add-channel" title="Добавить канал"></i>
+                    </div>
+                    <div class="channel active" data-channel="general">
+                        <i class="fas fa-hashtag"></i>
+                        <span>общий</span>
+                    </div>
+                    <div class="channel" data-channel="gaming">
+                        <i class="fas fa-hashtag"></i>
+                        <span>игры</span>
+                    </div>
+                    <div class="channel" data-channel="music">
+                        <i class="fas fa-hashtag"></i>
+                        <span>музыка</span>
+                    </div>
+                    <div class="channel" data-channel="random">
+                        <i class="fas fa-hashtag"></i>
+                        <span>рандом</span>
                     </div>
                 </div>
-                <div class="user-controls">
-                    <i class="fa-solid fa-microphone"></i>
-                    <i class="fa-solid fa-gear" id="openSettings"></i>
+                
+                <div class="category">
+                    <div class="category-header">
+                        <span>ГОЛОСОВЫЕ КАНАЛЫ</span>
+                        <i class="fas fa-plus add-channel" title="Добавить канал"></i>
+                    </div>
+                    <div class="channel voice">
+                        <i class="fas fa-volume-up"></i>
+                        <span>Общий голосовой</span>
+                    </div>
                 </div>
-            </footer>
-        </aside>
-
-        <main class="chat-area">
-            <header class="chat-header">
-                <i class="fa-solid fa-hashtag"></i> <h3>общий</h3>
-            </header>
-            <div class="messages" id="messagesContainer"></div>
-            <div id="typingIndicator" class="typing-indicator"></div>
-            <form class="message-form" id="messageForm">
-                <div class="input-wrapper">
-                    <button type="button" class="emoji-btn"><i class="fa-regular fa-face-smile"></i></button>
-                    <input type="text" id="messageInput" placeholder="Написать в #общий">
-                    <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
-                </div>
-            </form>
-        </main>
-    </div>
-
-    <div id="settingsModal" class="modal hidden">
-        <div class="modal-content settings-grid">
-            <div class="settings-sidebar">
-                <div class="s-item active"><i class="fa-solid fa-user"></i> Профиль</div>
-                <div class="s-item danger" onclick="location.reload()"><i class="fa-solid fa-right-from-bracket"></i> Выход</div>
             </div>
-            <div class="settings-main">
-                <h3>Настройки профиля</h3>
-                <div class="input-group">
-                    <label>НИКНЕЙМ</label>
-                    <input type="text" id="editNickname">
+            
+            <div class="user-info">
+                <div class="user-avatar">
+                    <span id="user-avatar-text">U</span>
                 </div>
-                <div class="input-group">
-                    <label>ЦВЕТ НИКА</label>
-                    <input type="color" id="roleColor" class="color-picker">
+                <div class="user-details">
+                    <strong id="current-username">Username</strong>
+                    <span id="user-id">#0000</span>
                 </div>
-                <div class="modal-actions">
-                    <button class="btn ghost" id="closeSettings">Отмена</button>
-                    <button class="btn main-btn" id="saveSettingsBtn">Сохранить</button>
+                <div class="user-actions">
+                    <i class="fas fa-microphone" title="Микрофон"></i>
+                    <i class="fas fa-headphones" title="Наушники"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основная область чата -->
+        <div class="chat-main">
+            <!-- Заголовок чата -->
+            <div class="chat-header">
+                <div class="channel-info">
+                    <i class="fas fa-hashtag"></i>
+                    <h2 id="current-channel">general</h2>
+                </div>
+                <div class="channel-tools">
+                    <i class="fas fa-user-plus" title="Пригласить"></i>
+                    <i class="fas fa-bell" title="Уведомления"></i>
+                    <i class="fas fa-pin" title="Закрепленные сообщения"></i>
+                    <i class="fas fa-user-friends" title="Список участников"></i>
+                    <div class="search-box">
+                        <input type="text" placeholder="Поиск" id="search-messages">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Область сообщений -->
+            <div class="messages-container" id="messages-container">
+                <div class="welcome-message">
+                    <h3><i class="fas fa-hashtag"></i> Добро пожаловать в #general!</h3>
+                    <p>Это начало канала #general. Напишите свое первое сообщение!</p>
+                </div>
+                <!-- Сообщения будут добавляться здесь -->
+            </div>
+
+            <!-- Индикатор печати -->
+            <div class="typing-indicator" id="typing-indicator">
+                <!-- Будет заполняться JavaScript -->
+            </div>
+
+            <!-- Поле ввода сообщения -->
+            <div class="message-input-area">
+                <div class="input-tools">
+                    <i class="fas fa-plus" title="Добавить вложение"></i>
+                    <i class="fas fa-gift" title="Подарок"></i>
+                    <i class="fas fa-smile" title="Эмодзи"></i>
+                </div>
+                <div class="message-input-wrapper">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        placeholder="Написать сообщение в #general"
+                        maxlength="2000"
+                        autocomplete="off"
+                    >
+                    <div class="input-hints">
+                        <span>Enter - отправить</span>
+                        <span>Shift+Enter - новая строка</span>
+                    </div>
+                </div>
+                <div class="send-button">
+                    <button id="send-message" class="btn btn-send" title="Отправить сообщение">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Панель участников -->
+        <div class="members-sidebar">
+            <div class="members-header">
+                <h3>УЧАСТНИКИ</h3>
+                <span id="online-count">0</span>
+            </div>
+            
+            <div class="online-section">
+                <div class="section-title">В сети — <span id="online-count-detail">0</span></div>
+                <div class="members-list" id="online-members">
+                    <!-- Список онлайн-участников -->
+                </div>
+            </div>
+            
+            <div class="offline-section">
+                <div class="section-title">Не в сети — <span id="offline-count">0</span></div>
+                <div class="members-list" id="offline-members">
+                    <!-- Список оффлайн-участников -->
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Модальное окно настроек -->
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog"></i> Настройки пользователя</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3><i class="fas fa-user-edit"></i> Изменить никнейм</h3>
+                    <div class="form-group">
+                        <input type="text" id="new-username" placeholder="Новый никнейм" maxlength="32">
+                        <button id="update-username" class="btn btn-secondary">Обновить</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3><i class="fas fa-palette"></i> Цвет имени</h3>
+                    <p>Выберите цвет для отображения вашего имени в чате:</p>
+                    <div class="color-options">
+                        <div class="color-option" data-color="#5865F2" style="background-color: #5865F2;"></div>
+                        <div class="color-option" data-color="#57F287" style="background-color: #57F287;"></div>
+                        <div class="color-option" data-color="#FEE75C" style="background-color: #FEE75C;"></div>
+                        <div class="color-option" data-color="#EB459E" style="background-color: #EB459E;"></div>
+                        <div class="color-option" data-color="#ED4245" style="background-color: #ED4245;"></div>
+                        <div class="color-option" data-color="#FFFFFF" style="background-color: #FFFFFF;"></div>
+                        <div class="color-option" data-color="#99AAB5" style="background-color: #99AAB5;"></div>
+                        <div class="color-option" data-color="#95a5a6" style="background-color: #95a5a6;"></div>
+                    </div>
+                    <div class="current-color-preview">
+                        <span>Текущий цвет: </span>
+                        <span id="current-color-display" class="color-sample"></span>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3><i class="fas fa-id-card"></i> Ваша информация</h3>
+                    <div class="user-info-display">
+                        <p><strong>ID пользователя:</strong> <code id="user-id-display">0000</code></p>
+                        <p><strong>Текущий ник:</strong> <span id="current-user-display">Username</span></p>
+                        <p><strong>Цвет имени:</strong> <span id="current-color-text">#5865F2</span></p>
+                    </div>
+                    <button id="clear-storage" class="btn btn-danger">
+                        <i class="fas fa-sign-out-alt"></i> Выйти и очистить данные
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary close-settings">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подключаем Firebase SDK и наш JS -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
