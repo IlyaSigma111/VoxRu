@@ -1,0 +1,141 @@
+* { box-sizing: border-box; font-family: Inter, Arial; margin:0; padding:0; }
+
+body {
+  height: 100vh;
+  background: linear-gradient(135deg,#020617,#0f172a);
+  color: white;
+}
+
+/* LOGIN */
+.login {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+.login-card {
+  background:#020617;
+  padding:40px;
+  border-radius:16px;
+  width:300px;
+  text-align:center;
+  box-shadow:0 0 40px rgba(0,0,0,.6);
+}
+
+.login-card input {
+  width:100%;
+  padding:10px;
+  margin-top:15px;
+  border-radius:8px;
+  border:none;
+  background:#1e293b;
+  color:white;
+}
+
+.login-card button {
+  width:100%;
+  margin-top:15px;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
+
+/* APP */
+.hidden { display:none; }
+
+.app {
+  display:flex;
+  height:100vh;
+}
+
+.sidebar {
+  width:220px;
+  background:#020617;
+  padding:15px;
+  border-right:1px solid #1e293b;
+}
+
+.profile {
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+  align-items:center;
+}
+
+.avatar {
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  background:#2563eb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-weight:bold;
+}
+
+.status { font-size:12px; }
+.online { color:#22c55e; }
+
+.chat-area {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.chat {
+  flex:1;
+  padding:15px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.message {
+  background:#1e293b;
+  padding:8px 12px;
+  border-radius:10px;
+  max-width:70%;
+}
+
+.me {
+  background:#2563eb;
+  align-self:flex-end;
+}
+
+.author {
+  font-size:12px;
+  opacity:.7;
+}
+
+.input {
+  display:flex;
+  border-top:1px solid #1e293b;
+}
+
+.input input {
+  flex:1;
+  padding:12px;
+  border:none;
+  background:#020617;
+  color:white;
+}
+
+.input button {
+  width:60px;
+  border:none;
+  background:#2563eb;
+  color:white;
+  font-size:20px;
+  cursor:pointer;
+}
+
+/* адаптив */
+@media(max-width:500px){
+  .app { flex-direction:column; }
+  .sidebar { width:100%; display:flex; justify-content:space-between; align-items:center; }
+}
