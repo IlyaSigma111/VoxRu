@@ -10,50 +10,62 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
-const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// GLOBALS
-let currentUser=null;
-let nickname="";
-let currentServer="home";
-let currentChannel="general";
-let users={};
-let voiceChannels={};
-let activeVoiceChannel=null;
-let microphoneEnabled=true;
-let headphonesEnabled=true;
+// ======== GLOBALS ========
+let currentUser = null;
+let nickname = "";
+let currentServer = "home";
+let currentChannel = "general";
 
-// DOM ELEMENTS
+// ======== DOM ========
 const loginScreen = document.getElementById("loginScreen");
 const nickScreen = document.getElementById("nickScreen");
 const appScreen = document.getElementById("app");
-const googleLoginBtn = document.getElementById("googleLoginBtn");
+const loginBtn = document.getElementById("loginBtn");
+const registerBtn = document.getElementById("registerBtn");
 const saveNickBtn = document.getElementById("saveNickBtn");
+const loginError = document.getElementById("loginError");
 
-// ========== AUTH ==========
-googleLoginBtn.onclick = async () => {
+// ======== AUTH ========
+loginBtn.onclick = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const pass = document.getElementById("passwordInput").value.trim();
+    loginError.textContent = "";
     try {
-        const result = await auth.signInWithPopup(googleProvider);
-        currentUser = result.user;
-        loginScreen.classList.add("hidden");
+        const res = await auth.signInWithEmailAndPassword(email, pass);
+        currentUser = res.user;
         nickScreen.classList.remove("hidden");
-    } catch(err){ alert("Ошибка входа: "+err.message); }
+        loginScreen.classList.add("hidden");
+    } catch(err){
+        loginError.textContent = err.message;
+    }
 };
 
-saveNickBtn.onclick = async () => {
-    const input = document.getElementById("nicknameInput");
-    const nick = input.value.trim();
-    if(!nick) { alert("Введите ник"); return; }
-    nickname = nick;
+registerBtn.onclick = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const pass = document.getElementById("passwordInput").value.trim();
+    loginError.textContent = "";
+    try {
+        const res = await auth.createUserWithEmailAndPassword(email, pass);
+        currentUser = res.user;
+        nickScreen.classList.remove("hidden");
+        loginScreen.classList.add("hidden");
+    } catch(err){
+        loginError.textContent = err.message;
+    }
+};
 
-    // Сохраняем в базе
+// ======== NICKNAME ========
+saveNickBtn.onclick = async () => {
+    const nickInput = document.getElementById("nicknameInput").value.trim();
+    if(!nickInput) return alert("Введите ник");
+    nickname = nickInput;
     await database.ref("users/"+currentUser.uid).set({
         username:nickname,
         email:currentUser.email,
         status:"online",
         createdAt:Date.now()
     });
-
     nickScreen.classList.add("hidden");
     appScreen.classList.remove("hidden");
     loadServers();
@@ -62,7 +74,7 @@ saveNickBtn.onclick = async () => {
     setupRealtimeListeners();
 };
 
-// ========== SERVERS ==========
+// ======== SERVERS/CHANNELS/MESSAGES =========
 async function loadServers(){
     const serverList = document.getElementById("serverList");
     serverList.innerHTML = "";
@@ -83,28 +95,17 @@ function switchServer(id){
     loadMessages();
 }
 
-// ========== CHANNELS ==========
 async function loadChannels(){
     const textChannelsDiv = document.getElementById("textChannels");
-    const voiceChannelsDiv = document.getElementById("voiceChannels");
-    textChannelsDiv.innerHTML = "";
-    voiceChannelsDiv.innerHTML = "";
-
+    textChannelsDiv.innerHTML="";
     const snapshot = await database.ref(`servers/${currentServer}/channels`).once("value");
     const channels = snapshot.val() || {};
-
     Object.entries(channels).forEach(([id,ch])=>{
         if(ch.type==="text"){
             const a = document.createElement("a");
             a.href="#"; a.className="channel"; a.textContent="# "+ch.name;
             a.onclick=()=>switchChannel(id);
-            if(id===currentChannel) a.classList.add("active");
             textChannelsDiv.appendChild(a);
-        } else {
-            const div = document.createElement("div");
-            div.className="voice-channel";
-            div.textContent=ch.name;
-            voiceChannelsDiv.appendChild(div);
         }
     });
 }
@@ -114,7 +115,6 @@ function switchChannel(id){
     loadMessages();
 }
 
-// ========== MESSAGES ==========
 async function loadMessages(){
     const container = document.getElementById("messagesContainer");
     container.innerHTML="";
@@ -129,12 +129,14 @@ async function loadMessages(){
         const content = document.createElement("div");
         content.className="message-content";
         content.innerHTML = `<div class="message-header"><span class="message-author">${msg.username}</span></div><div class="message-text">${msg.text}</div>`;
-        div.appendChild(avatar); div.appendChild(content);
+        div.appendChild(avatar);
+        div.appendChild(content);
         container.appendChild(div);
+        div.scrollIntoView({behavior:"smooth"});
     });
 }
 
-// ========== SEND MESSAGE ==========
+// ======== SEND MESSAGE ========
 document.getElementById("messageForm").onsubmit = async (e)=>{
     e.preventDefault();
     const input = document.getElementById("messageInput");
@@ -147,10 +149,9 @@ document.getElementById("messageForm").onsubmit = async (e)=>{
         timestamp:Date.now()
     });
     input.value="";
-    loadMessages();
 };
 
-// ========== REALTIME ==========
+// ======== REALTIME LISTENERS ========
 function setupRealtimeListeners(){
     database.ref(`messages/${currentServer}/${currentChannel}`).limitToLast(1).on("child_added", loadMessages);
 }
