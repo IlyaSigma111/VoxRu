@@ -1,150 +1,156 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getDatabase, ref, set, get, child, push, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-// ===== Firebase =====
+// ========== FIREBASE CONFIG ==========
 const firebaseConfig = {
-  apiKey:"AIzaSyD9aQcvK58mF2byEach9002M8AED8Mit6g",
-  authDomain:"rucord-c222d.firebaseapp.com",
-  projectId:"rucord-c222d",
-  storageBucket:"rucord-c222d.firebasestorage.app",
-  messagingSenderId:"21205944885",
-  appId:"1:21205944885:web:28ee133fa547c8e21bff7c"
+    apiKey: "AIzaSyD9aQcvK58mF2byEach9002M8AED8Mit6g",
+    authDomain: "rucord-c222d.firebaseapp.com",
+    projectId: "rucord-c222d",
+    storageBucket: "rucord-c222d.appspot.com",
+    messagingSenderId: "21205944885",
+    appId: "1:21205944885:web:28ee133fa547c8e21bff7c"
 };
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-const provider = new GoogleAuthProvider();
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const database = firebase.database();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+// GLOBALS
 let currentUser=null;
-let currentChannel='general';
-let currentServer='home';
+let nickname="";
+let currentServer="home";
+let currentChannel="general";
+let users={};
+let voiceChannels={};
+let activeVoiceChannel=null;
+let microphoneEnabled=true;
+let headphonesEnabled=true;
 
-// ===== DOM =====
-const loginScreen=document.getElementById('loginScreen');
-const nicknameModal=document.getElementById('nicknameModal');
-const nicknameInput=document.getElementById('nicknameInput');
-const nicknameSubmit=document.getElementById('nicknameSubmit');
+// DOM ELEMENTS
+const loginScreen = document.getElementById("loginScreen");
+const nickScreen = document.getElementById("nickScreen");
+const appScreen = document.getElementById("app");
+const googleLoginBtn = document.getElementById("googleLoginBtn");
+const saveNickBtn = document.getElementById("saveNickBtn");
 
-document.getElementById('googleLoginBtn').addEventListener('click', googleLogin);
-nicknameSubmit.addEventListener('click', saveNickname);
-document.getElementById('messageForm').addEventListener('submit', sendMessage);
+// ========== AUTH ==========
+googleLoginBtn.onclick = async () => {
+    try {
+        const result = await auth.signInWithPopup(googleProvider);
+        currentUser = result.user;
+        loginScreen.classList.add("hidden");
+        nickScreen.classList.remove("hidden");
+    } catch(err){ alert("Ошибка входа: "+err.message); }
+};
 
-// ===== Авторизация =====
-async function googleLogin(){
-  try{
-    const result=await signInWithPopup(auth,provider);
-    currentUser=result.user;
-    const snapshot=await get(ref(db,`users/${currentUser.uid}`));
-    if(!snapshot.exists()||!snapshot.val().nickname) nicknameModal.style.display='flex';
-    else enterApp(snapshot.val());
-  }catch(e){ showNotification(e.message,'error'); }
-}
+saveNickBtn.onclick = async () => {
+    const input = document.getElementById("nicknameInput");
+    const nick = input.value.trim();
+    if(!nick) { alert("Введите ник"); return; }
+    nickname = nick;
 
-async function saveNickname(){
-  const nickname=nicknameInput.value.trim();
-  if(!nickname){ showNotification('Введите ник','error'); return; }
-  const avatar=generateAvatar(nickname);
-  await set(ref(db,`users/${currentUser.uid}`),{
-    uid:currentUser.uid,
-    email:currentUser.email,
-    nickname,
-    avatar,
-    status:'online',
-    createdAt:Date.now()
-  });
-  nicknameModal.style.display='none';
-  enterApp({nickname,avatar});
-  showNotification(`Добро пожаловать, ${nickname}!`,'success');
-}
-
-function enterApp(userData){
-  loginScreen.style.display='none';
-  document.getElementById('app').style.display='flex';
-  updateUserUI(userData);
-  loadChannels();
-  loadMessages();
-  setupRealtimeListeners();
-}
-
-function updateUserUI(userData){
-  const avatarEl=document.getElementById('userAvatar');
-  const nameEl=document.getElementById('userName');
-  avatarEl.style.background=userData.avatar.color;
-  avatarEl.textContent=userData.avatar.emoji||userData.nickname.charAt(0).toUpperCase();
-  nameEl.textContent=userData.nickname;
-}
-
-// ===== Утилиты =====
-function generateAvatar(username){
-  const colors=['#5865f2','#3ba55d','#faa81a','#ed4245','#9b59b6','#e91e63','#00bcd4','#ff9800','#4caf50','#2196f3'];
-  const emojis=['😊','😎','🤖','🎮','🎵','📚','🎨','🚀','🌟','💻'];
-  return {color:colors[Math.floor(Math.random()*colors.length)],emoji:emojis[Math.floor(Math.random()*emojis.length)],text:username.charAt(0).toUpperCase()};
-}
-
-function showNotification(msg,type='info'){
-  const n=document.createElement('div'); n.className='notification';
-  n.style.background=type==='error'? '#ed4245':type==='success'? '#3ba55d':'#5865f2'; n.textContent=msg;
-  document.body.appendChild(n);
-  setTimeout(()=>{ n.style.animation='slideOut 0.3s ease'; setTimeout(()=>n.remove(),300); },3000);
-}
-
-// ===== Текстовый чат =====
-async function sendMessage(e){
-  e.preventDefault();
-  const input=document.getElementById('messageInput'); const text=input.value.trim();
-  if(!text) return;
-  const msg={text,userId:currentUser.uid,nickname:document.getElementById('userName').textContent,timestamp:Date.now(),channel:currentChannel};
-  await push(ref(db,`messages/${currentServer}/${currentChannel}`),msg);
-  input.value=''; scrollMessages();
-}
-
-function scrollMessages(){
-  const container=document.getElementById('messagesContainer'); if(container) container.scrollTop=container.scrollHeight;
-}
-
-async function loadMessages(){
-  const container=document.getElementById('messagesContainer'); if(!container) return;
-  container.innerHTML='';
-  const snapshot=await get(ref(db,`messages/${currentServer}/${currentChannel}`));
-  snapshot.forEach(child=>{
-    const msg=child.val();
-    const div=document.createElement('div'); div.className='message';
-    div.innerHTML=`<div class="message-avatar">${msg.nickname.charAt(0).toUpperCase()}</div>
-                   <div class="message-content"><div class="message-header"><span>${msg.nickname}</span><span>${new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></div>
-                   <div class="message-text">${msg.text}</div></div>`;
-    container.appendChild(div);
-  });
-  scrollMessages();
-}
-
-// ===== Сервера и каналы =====
-async function loadChannels(){
-  const textChannelsEl=document.getElementById('textChannels'); if(!textChannelsEl) return;
-  textChannelsEl.innerHTML='';
-  const channels=['general','memes','help']; // пример
-  channels.forEach(ch=>{
-    const a=document.createElement('a'); a.href='#'; a.className='channel'; a.textContent='# '+ch; a.onclick=()=>switchChannel(ch);
-    if(ch===currentChannel) a.classList.add('active');
-    textChannelsEl.appendChild(a);
-  });
-}
-
-function switchChannel(ch){currentChannel=ch; loadMessages(); loadChannels();}
-
-// ===== Realtime =====
-function setupRealtimeListeners(){
-  onValue(ref(db,`messages/${currentServer}/${currentChannel}`),snapshot=>{
-    loadMessages();
-  });
-}
-
-onAuthStateChanged(auth,user=>{
-  if(user){
-    currentUser=user;
-    get(child(ref(db),`users/${user.uid}`)).then(snapshot=>{
-      if(!snapshot.exists()||!snapshot.val().nickname) nicknameModal.style.display='flex';
-      else enterApp(snapshot.val());
+    // Сохраняем в базе
+    await database.ref("users/"+currentUser.uid).set({
+        username:nickname,
+        email:currentUser.email,
+        status:"online",
+        createdAt:Date.now()
     });
-  } else { loginScreen.style.display='flex'; document.getElementById('app').style.display='none'; }
-});
+
+    nickScreen.classList.add("hidden");
+    appScreen.classList.remove("hidden");
+    loadServers();
+    loadChannels();
+    loadMessages();
+    setupRealtimeListeners();
+};
+
+// ========== SERVERS ==========
+async function loadServers(){
+    const serverList = document.getElementById("serverList");
+    serverList.innerHTML = "";
+    const snapshot = await database.ref("servers").once("value");
+    const servers = snapshot.val() || {};
+    Object.entries(servers).forEach(([id,s])=>{
+        const btn = document.createElement("button");
+        btn.className="btn";
+        btn.textContent=s.name;
+        btn.onclick=()=>switchServer(id);
+        serverList.appendChild(btn);
+    });
+}
+
+function switchServer(id){
+    currentServer=id;
+    loadChannels();
+    loadMessages();
+}
+
+// ========== CHANNELS ==========
+async function loadChannels(){
+    const textChannelsDiv = document.getElementById("textChannels");
+    const voiceChannelsDiv = document.getElementById("voiceChannels");
+    textChannelsDiv.innerHTML = "";
+    voiceChannelsDiv.innerHTML = "";
+
+    const snapshot = await database.ref(`servers/${currentServer}/channels`).once("value");
+    const channels = snapshot.val() || {};
+
+    Object.entries(channels).forEach(([id,ch])=>{
+        if(ch.type==="text"){
+            const a = document.createElement("a");
+            a.href="#"; a.className="channel"; a.textContent="# "+ch.name;
+            a.onclick=()=>switchChannel(id);
+            if(id===currentChannel) a.classList.add("active");
+            textChannelsDiv.appendChild(a);
+        } else {
+            const div = document.createElement("div");
+            div.className="voice-channel";
+            div.textContent=ch.name;
+            voiceChannelsDiv.appendChild(div);
+        }
+    });
+}
+
+function switchChannel(id){
+    currentChannel=id;
+    loadMessages();
+}
+
+// ========== MESSAGES ==========
+async function loadMessages(){
+    const container = document.getElementById("messagesContainer");
+    container.innerHTML="";
+    const snapshot = await database.ref(`messages/${currentServer}/${currentChannel}`).limitToLast(50).once("value");
+    snapshot.forEach(child=>{
+        const msg = child.val();
+        const div = document.createElement("div");
+        div.className="message";
+        const avatar = document.createElement("div");
+        avatar.className="message-avatar";
+        avatar.textContent = msg.username.charAt(0).toUpperCase();
+        const content = document.createElement("div");
+        content.className="message-content";
+        content.innerHTML = `<div class="message-header"><span class="message-author">${msg.username}</span></div><div class="message-text">${msg.text}</div>`;
+        div.appendChild(avatar); div.appendChild(content);
+        container.appendChild(div);
+    });
+}
+
+// ========== SEND MESSAGE ==========
+document.getElementById("messageForm").onsubmit = async (e)=>{
+    e.preventDefault();
+    const input = document.getElementById("messageInput");
+    const text = input.value.trim();
+    if(!text) return;
+    await database.ref(`messages/${currentServer}/${currentChannel}`).push({
+        text:text,
+        userId:currentUser.uid,
+        username:nickname,
+        timestamp:Date.now()
+    });
+    input.value="";
+    loadMessages();
+};
+
+// ========== REALTIME ==========
+function setupRealtimeListeners(){
+    database.ref(`messages/${currentServer}/${currentChannel}`).limitToLast(1).on("child_added", loadMessages);
+}
